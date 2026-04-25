@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CS2516 Flashcards</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+  h1 { font-size: 1.4rem; margin-bottom: 6px; color: #7dd3fc; }
+  .subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 20px; }
+  .progress { font-size: 0.85rem; color: #94a3b8; margin-bottom: 16px; }
+  .card-wrap { width: 100%; max-width: 480px; perspective: 1000px; margin-bottom: 20px; }
+  .card { width: 100%; min-height: 260px; position: relative; transform-style: preserve-3d; transition: transform 0.5s; cursor: pointer; }
+  .card.flipped { transform: rotateY(180deg); }
+  .front, .back {
+    position: absolute; width: 100%; min-height: 260px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 16px; padding: 24px; display: flex; flex-direction: column; justify-content: center;
+  }
+  .front { background: #1e293b; border: 1px solid #334155; }
+  .back { background: #0c1a2e; border: 1px solid #1d4ed8; transform: rotateY(180deg); }
+  .tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 12px; }
+  .question { font-size: 1.1rem; font-weight: 600; color: #e2e8f0; line-height: 1.5; }
+  .answer { font-size: 0.92rem; color: #cbd5e1; line-height: 1.6; }
+  pre { background: #0f172a; border-radius: 8px; padding: 12px; font-size: 0.78rem; overflow-x: auto; color: #7dd3fc; margin-top: 10px; line-height: 1.5; white-space: pre-wrap; }
+  .hint { font-size: 0.78rem; color: #475569; margin-top: 16px; text-align: center; }
+  .buttons { display: flex; gap: 12px; width: 100%; max-width: 480px; margin-bottom: 12px; }
+  button { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  button:active { opacity: 0.7; }
+  #prevBtn { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+  #nextBtn { background: #1d4ed8; color: white; }
+  .category-bar { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; max-width: 480px; margin-bottom: 20px; }
+  .cat-btn { padding: 6px 12px; border-radius: 20px; font-size: 0.78rem; border: 1px solid #334155; background: #1e293b; color: #94a3b8; cursor: pointer; }
+  .cat-btn.active { background: #1d4ed8; color: white; border-color: #1d4ed8; }
+</style>
+</head>
+<body>
+
+<h1>CS2516 Flashcards</h1>
+<p class="subtitle">Tap card to reveal answer</p>
+
+<div class="category-bar" id="catBar"></div>
+
+<p class="progress" id="progress"></p>
+
+<div class="card-wrap">
+  <div class="card" id="card" onclick="flipCard()">
+    <div class="front">
+      <div class="tag" id="tag"></div>
+      <div class="question" id="question"></div>
+      <p class="hint">Tap to reveal</p>
+    </div>
+    <div class="back">
+      <div class="tag" id="tag2"></div>
+      <div class="answer" id="answer"></div>
+    </div>
+  </div>
+</div>
+
+<div class="buttons">
+  <button id="prevBtn" onclick="prev()">← Prev</button>
+  <button id="nextBtn" onclick="next()">Next →</button>
+</div>
+
+<script>
+const all = [
+  // PSEUDOCODE
+  { cat: "Pseudocode", q: "Write DFS pseudocode", a: "", code: `DFS(G, u, visited):
+  mark u as visited
+  for each edge e incident to u:
+    v = opposite endpoint of e
+    if v not in visited:
+      label e as TREE edge
+      DFS(G, v, visited)
+    else:
+      label e as BACK edge
+
+for each vertex u in G:
+  if u not in visited:
+    DFS(G, u, visited)` },
+
+  { cat: "Pseudocode", q: "Write BFS pseudocode", a: "", code: `BFS(G, s):
+  visited = {s: (None, 0)}
+  queue = [s]
+  while queue not empty:
+    u = dequeue from front
+    for each edge e incident to u:
+      v = opposite endpoint
+      if v not in visited:
+        visited[v] = (u, visited[u][1] + 1)
+        enqueue v` },
+
+  { cat: "Pseudocode", q: "Write Topological Sort (Kahn's) pseudocode", a: "", code: `TopoSort(G):
+  compute indegree for each vertex
+  queue = vertices with indegree 0
+  result = []
+
+  while queue not empty:
+    u = dequeue
+    output u
+    for each neighbour v of u:
+      indegree[v]--
+      if indegree[v] == 0:
+        enqueue v` },
+
+  { cat: "Pseudocode", q: "Write Dijkstra's pseudocode", a: "", code: `Dijkstra(G, s):
+  for each vertex v:
+    dist[v] = ∞
+  dist[s] = 0
+  add all vertices to APQ
+
+  while APQ not empty:
+    u = extract-min
+    for each edge e incident to u:
+      v = opposite endpoint
+      new_dist = dist[u] + weight(e)
+      if new_dist < current key of v in APQ:
+        update v's key to new_dist in APQ
+        prev[v] = u` },
+
+  { cat: "Pseudocode", q: "Write Prim's MST pseudocode", a: "Key difference from Dijkstra: update with edge weight only, not cumulative distance. Track connecting_edge not prev.", code: `Prim(G, src):
+  for each vertex v:
+    key[v] = ∞
+  key[src] = 0
+  add all vertices to APQ
+  connecting_edge[v] = None for all v
+
+  while APQ not empty:
+    u = extract-min
+    for each edge e incident to u:
+      v = opposite endpoint
+      if v still in APQ and weight(e) < key[v]:
+        update v's key to weight(e) in APQ
+        connecting_edge[v] = e` },
+
+  { cat: "Pseudocode", q: "Write Kruskal's MST pseudocode", a: "Uses Union-Find. No source needed — works globally.", code: `Kruskal(G):
+  sort all edges by weight (ascending)
+  for each vertex v:
+    make_group(v)
+  mst = []
+
+  for each edge e = (u,v) in sorted order:
+    if find(u) != find(v):
+      add e to mst
+      union(u, v)
+
+  return mst` },
+
+  { cat: "Pseudocode", q: "Write Floyd-Warshall pseudocode", a: "Initialise dist[i][j] with edge weights, ∞ if no edge, 0 on diagonal. O(n³).", code: `FloydWarshall(dist):
+  for k = 0 to n-1:
+    for i = 0 to n-1:
+      for j = 0 to n-1:
+        if dist[i][k] + dist[k][j] < dist[i][j]:
+          dist[i][j] = dist[i][k] + dist[k][j]` },
+
+  { cat: "Pseudocode", q: "Write Gale-Shapley (Stable Matching) pseudocode", a: "Men propose in order of preference. Women always hold best offer. Terminates in ≤ n² steps.", code: `GaleShapley(men, women):
+  while there exists a free man:
+    m = next free man
+    w = m's next preferred woman
+    if w is free:
+      match(m, w)
+    elif w prefers m over current partner:
+      free current partner
+      match(m, w)
+    else:
+      m remains free` },
+
+  // COMPLEXITIES
+  { cat: "Complexity", q: "What are the time complexities for get_edge(u,v)?", a: "Edge List: O(m)\nAdj List: O(deg(u))\nAdj Map: O(1)\nAdj Matrix: O(1)" },
+  { cat: "Complexity", q: "What are the time complexities for incident_edges(v)?", a: "Edge List: O(m)\nAdj List: O(deg(v))\nAdj Map: O(deg(v))\nAdj Matrix: O(n)" },
+  { cat: "Complexity", q: "What are the space complexities for each graph representation?", a: "Edge List: O(n+m)\nAdj List: O(n+m)\nAdj Map: O(n+m)\nAdj Matrix: O(n²)" },
+  { cat: "Complexity", q: "What is the complexity of Dijkstra's?", a: "O((n + m) log n) with a binary heap APQ." },
+  { cat: "Complexity", q: "What is the complexity of Prim's?", a: "O((n + m) log n) — same structure as Dijkstra." },
+  { cat: "Complexity", q: "What is the complexity of Kruskal's?", a: "O(m log n) — dominated by sorting the edges." },
+  { cat: "Complexity", q: "What is the complexity of Floyd-Warshall?", a: "O(n³) time, O(n²) space." },
+  { cat: "Complexity", q: "What is the complexity of Topological Sort?", a: "O(n + m) — each vertex and edge processed once." },
+  { cat: "Complexity", q: "What is the complexity of DFS and BFS?", a: "Both O(n + m) where n = vertices, m = edges." },
+  { cat: "Complexity", q: "What is the complexity of Gale-Shapley?", a: "O(n²) — at most n² proposals, each O(1)." },
+  { cat: "Complexity", q: "What is the complexity of LCS?", a: "O(n·m) time and space — filling an (n+1)×(m+1) table." },
+  { cat: "Complexity", q: "What is the complexity of brute force string matching?", a: "O(n·m) worst case. O(n) best case." },
+
+  // SORTING
+  { cat: "Sorting", q: "Which sorting algorithms are stable?", a: "Stable: Bubble, Insertion, Merge, Counting, Radix, Timsort.\nNot stable: Selection, Heap, Quicksort." },
+  { cat: "Sorting", q: "Which sorting algorithms are in-place?", a: "In-place: Bubble, Selection, Insertion, Heap, Quicksort.\nNot in-place: Merge (O(n) extra), Counting, Radix, Timsort." },
+  { cat: "Sorting", q: "What are the complexities of Mergesort?", a: "Best/Average/Worst: O(n log n). Space: O(n). Stable: Yes." },
+  { cat: "Sorting", q: "What are the complexities of Quicksort?", a: "Best/Average: O(n log n). Worst: O(n²) — pivot always min/max. Stable: No." },
+  { cat: "Sorting", q: "What are the complexities of Heapsort?", a: "Always O(n log n). In-place. Not stable." },
+  { cat: "Sorting", q: "What is Counting Sort and when is it used?", a: "Non-comparison sort. O(n+k) where k = range of values. Only works for integer keys in a known range. Stable." },
+  { cat: "Sorting", q: "What is Radix Sort?", a: "Sort digit by digit from LSD to MSD using stable counting sort each pass. O(d·(n+k)). Stable because each pass is stable." },
+  { cat: "Sorting", q: "What is the lower bound for comparison-based sorting?", a: "Ω(n log n). There are n! possible orderings, so the decision tree needs at least log₂(n!) ≈ n log n leaves." },
+
+  // GRAPH THEORY
+  { cat: "Graph Theory", q: "State the Handshaking Lemma", a: "Sum of all degrees = 2|E|. Each edge contributes 2 to the total degree. For digraphs: sum of in-degrees = sum of out-degrees = |E|." },
+  { cat: "Graph Theory", q: "Max edges in an undirected simple graph with n vertices?", a: "n(n-1)/2" },
+  { cat: "Graph Theory", q: "Max edges in a directed simple graph with n vertices?", a: "n(n-1)" },
+  { cat: "Graph Theory", q: "What is a spanning tree?", a: "A subgraph that contains all n vertices, is connected, has no cycles, and has exactly n-1 edges." },
+  { cat: "Graph Theory", q: "What is a DAG?", a: "Directed Acyclic Graph — a directed graph with no directed cycles. Every DAG has at least one source (vertex with in-degree 0)." },
+  { cat: "Graph Theory", q: "What is transitive closure?", a: "Graph G* where edge (u,v) exists iff there is a directed path from u to v in G. Computed using Floyd-Warshall in O(n³)." },
+  { cat: "Graph Theory", q: "How do you detect a cycle using DFS?", a: "If you encounter a BACK edge during DFS, the graph has a cycle." },
+  { cat: "Graph Theory", q: "How do you detect a cycle using Topological Sort?", a: "If len(result) < number of vertices after Kahn's algorithm, the graph has a cycle." },
+
+  // KEY CONCEPTS
+  { cat: "Concepts", q: "Dijkstra vs Prim's — what's the key difference?", a: "Dijkstra: minimises total path distance from source (dist[u] + weight(e)).\nPrim's: minimises edge weight to connect next vertex (weight(e) only)." },
+  { cat: "Concepts", q: "Kruskal's vs Prim's — when to use each?", a: "Kruskal's: better for sparse graphs, O(m log n).\nPrim's: better for dense graphs, O((n+m) log n)." },
+  { cat: "Concepts", q: "Why doesn't Dijkstra work with negative edge weights?", a: "Dijkstra assumes once a vertex is removed from APQ, its distance is final. Negative edges can create shorter paths via unvisited vertices, violating this assumption." },
+  { cat: "Concepts", q: "What is an APQ and why is it needed?", a: "Adaptable Priority Queue — supports update_key() to decrease a vertex's key. Needed for Dijkstra and Prim's to update distances when a shorter path is found. update_key is O(log n)." },
+  { cat: "Concepts", q: "What does man-optimal / woman-pessimal mean in Gale-Shapley?", a: "Every man gets the best partner he can in ANY stable matching. Every woman gets the worst partner she could have in any stable matching. Because men propose, they optimistically pursue top choices." },
+  { cat: "Concepts", q: "What is memoisation?", a: "Caching the results of recursive subproblems to avoid recomputation. Converts exponential algorithms (e.g. Fibonacci O(2^n)) to linear O(n)." },
+  { cat: "Concepts", q: "What is the LCS recurrence?", a: "If s[j] == t[k]: L[j+1][k+1] = L[j][k] + 1\nIf s[j] != t[k]: L[j+1][k+1] = max(L[j][k+1], L[j+1][k])\nBase case: L[0][k] = L[j][0] = 0" },
+  { cat: "Concepts", q: "What is Floyd-Warshall for transitive closure?", a: "Same algorithm but boolean:\nT[i][j] = T[i][j] OR (T[i][k] AND T[k][j])\nInitialise T[i][j] = True if edge exists or i==j." },
+];
+
+const cats = ["All", ...new Set(all.map(c => c.cat))];
+let activeCat = "All";
+let filtered = [...all];
+let idx = 0;
+let flipped = false;
+
+function buildCatBar() {
+  const bar = document.getElementById("catBar");
+  bar.innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "cat-btn" + (c === activeCat ? " active" : "");
+    b.textContent = c;
+    b.onclick = () => { activeCat = c; filtered = c === "All" ? [...all] : all.filter(x => x.cat === c); idx = 0; buildCatBar(); render(); };
+    bar.appendChild(b);
+  });
+}
+
+function render() {
+  flipped = false;
+  document.getElementById("card").classList.remove("flipped");
+  const card = filtered[idx];
+  document.getElementById("tag").textContent = card.cat;
+  document.getElementById("tag2").textContent = card.cat;
+  document.getElementById("question").textContent = card.q;
+  let ansHtml = "";
+  if (card.a) ansHtml += `<p>${card.a.replace(/\n/g, "<br>")}</p>`;
+  if (card.code) ansHtml += `<pre>${card.code}</pre>`;
+  document.getElementById("answer").innerHTML = ansHtml;
+  document.getElementById("progress").textContent = `Card ${idx + 1} of ${filtered.length}`;
+}
+
+function flipCard() { flipped = !flipped; document.getElementById("card").classList.toggle("flipped", flipped); }
+function next() { idx = (idx + 1) % filtered.length; render(); }
+function prev() { idx = (idx - 1 + filtered.length) % filtered.length; render(); }
+
+buildCatBar();
+render();
+</script>
+</body>
+</html>
